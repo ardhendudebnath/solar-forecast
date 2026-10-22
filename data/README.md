@@ -8,8 +8,13 @@ DOE **2023 Solar Data Prize** datasets in NREL's PV Data Acquisition (PVDAQ) col
 Open Energy Data Initiative data lake: `s3://oedi-data-lake/pvdaq/2023-solar-data-prize/`
 (public, no account needed; HTTPS at `https://oedi-data-lake.s3.amazonaws.com/`).
 
-Licence: to be confirmed from the dataset's OEDI listing before any redistribution. This
-repository redistributes no data, only code that downloads and reads it.
+Licence: the PVDAQ public datasets, which include the prize data, are listed under
+[Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) in the
+[data.gov catalog](https://catalog.data.gov/dataset/photovoltaic-data-acquisition-pvdaq-public-datasets).
+That listing is for the parent collection; no separate licence is published for the prize folder.
+Cite the dataset as NREL, *Photovoltaic Data Acquisition (PVDAQ) Public Datasets*,
+doi:[10.25984/1846021](https://dx.doi.org/10.25984/1846021). This repository redistributes no
+data, only code that downloads and reads it.
 
 | Plant | Location | DC capacity | Mount | Files used | Period |
 |---|---|---|---|---|---|

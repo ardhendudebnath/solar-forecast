@@ -72,7 +72,8 @@ tests/                     unit tests, including leakage and selection checks
 ## Data
 
 DOE 2023 Solar Data Prize datasets in NREL's PVDAQ collection on the Open Energy Data Initiative
-data lake (`s3://oedi-data-lake/pvdaq/2023-solar-data-prize/`). No data is redistributed here.
+data lake (`s3://oedi-data-lake/pvdaq/2023-solar-data-prize/`), licensed CC BY 4.0
+(doi:[10.25984/1846021](https://dx.doi.org/10.25984/1846021)). No data is redistributed here.
 
 ## Licence
 
