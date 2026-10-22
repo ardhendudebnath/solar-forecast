@@ -27,7 +27,14 @@ TEST_LAST_MONTH = 10  # pre-registered test period: January-October 2023
 # A target is scored only once its whole feature window (the issue time and the N_LAGS - 1
 # intervals before it) lies inside its own partition: N_LAGS - 1 + h intervals after the start.
 LGBM_PARAMS = dict(
-    n_estimators=400, learning_rate=0.05, num_leaves=31, min_child_samples=100, verbose=-1
+    n_estimators=400,
+    learning_rate=0.05,
+    num_leaves=31,
+    min_child_samples=100,
+    verbose=-1,
+    # LightGBM otherwise picks col- or row-wise histograms by timing both, so the choice (and the
+    # last digits of the result) depends on machine load. Col-wise reproduces the v0.1 results.
+    force_col_wise=True,
 )
 
 

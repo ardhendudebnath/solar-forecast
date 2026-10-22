@@ -111,4 +111,13 @@ the test run.
 
 ## Amendments
 
-None yet.
+**2026-10-22, before the test run: LightGBM's histogram method is fixed.** Re-running v0.1 to check
+that the v0.2 loader changes left it untouched reproduced every number except one in the
+irradiance-sensor variant (plant 9068, 4 hours, LightGBM), which differed in the sixth decimal
+(RMSE 0.217441 against 0.217442). The data was identical; the cause is that LightGBM chooses
+between col-wise and row-wise histogram construction by timing both, so under different machine
+load it can choose differently and round differently (forcing each reproduces the two values
+exactly). All LightGBM models, v0.1 and v0.2, now use `force_col_wise=True`, the choice that
+reproduces the published v0.1 results. This changes no model setting, only removes a source of
+run-to-run variation. Found while checking the code on validation data; no 2024 forecast had
+been made.
