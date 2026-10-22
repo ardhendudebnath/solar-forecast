@@ -1,0 +1,50 @@
+name: release
+
+# Publishes a GitHub release for the package version. Two ways to start it:
+#   - push a version tag (v*); the tag must match the package version;
+#   - run it by hand (workflow_dispatch) on main; it creates the v<version> tag at that commit.
+# The release notes are that version's section of CHANGELOG.md.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # to check that a pushed tag is on main
+      - name: Work out the tag
+        run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/solarcast/__init__.py)
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            test "v$version" = "$GITHUB_REF_NAME" || {
+              echo "Tag $GITHUB_REF_NAME does not match package version $version"; exit 1; }
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+              echo "Tag $GITHUB_REF_NAME is not on main"; exit 1; }
+          else
+            test "$GITHUB_REF_NAME" = "main" || { echo "Run this workflow on main"; exit 1; }
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          awk -v v="$VERSION" '
+            index($0, "## " v) == 1 && (length($0) == length("## " v) ||
+              substr($0, length("## " v) + 1, 1) == " ") { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "No CHANGELOG.md section for $VERSION"; exit 1; }
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # On a manual run gh creates the tag at this commit (or uses it if it already exists).
+          gh release create "v$VERSION" --title "solar-forecast v$VERSION" --notes-file notes.md \
+            --target "$GITHUB_SHA" $([ "$GITHUB_REF_TYPE" = "tag" ] && echo --verify-tag)
