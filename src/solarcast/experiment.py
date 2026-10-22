@@ -23,6 +23,7 @@ from solarcast.data import Plant, outage_days
 
 HORIZONS = (1, 4, 16)
 SPLITS = {"train": (None, 2021), "validation": (2022, 2022), "test": (2023, 2023)}
+TEST_LAST_MONTH = 10  # pre-registered test period: January-October 2023
 WARMUP = 16  # first 4 hours of each partition are not scored
 LGBM_PARAMS = dict(
     n_estimators=400, learning_rate=0.05, num_leaves=31, min_child_samples=100, verbose=-1
@@ -53,12 +54,15 @@ class Prepared:
 
 def prepare(plant: Plant, frame: pd.DataFrame, include_test: bool = False) -> Prepared:
     """Per-unit power, clear-sky reference fitted on training data, split labels."""
-    year = pd.Series(frame.index.tz_convert(plant.timezone).year, index=frame.index)
+    local = frame.index.tz_convert(plant.timezone)
+    year = pd.Series(local.year, index=frame.index)
+    month = pd.Series(local.month, index=frame.index)
     if not include_test:
-        frame, year = frame[year <= 2022], year[year <= 2022]
+        frame, year, month = frame[year <= 2022], year[year <= 2022], month[year <= 2022]
     split = pd.Series("", index=frame.index)
     for name, (lo, hi) in SPLITS.items():
         split[(year >= (lo or 0)) & (year <= hi)] = name
+    split[(split == "test") & (month > TEST_LAST_MONTH)] = ""  # outside the test period
     power = frame["power_kw"] / plant.capacity_kw_dc
     geometry = solar_geometry(plant, frame.index)
     train = split == "train"

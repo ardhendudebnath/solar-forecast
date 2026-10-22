@@ -106,3 +106,20 @@ def test_selection_and_scoring_use_the_same_rows(frame):
         assert res["validation_rmse"][name] == pytest.approx(res["rmse"][name])
     assert res["excluded_missing_forecast"]["climatology"] > 0  # counted, not hidden
     assert res["rmse"]["selected"] == min(res["rmse"]["ridge"], res["rmse"]["lightgbm"])
+
+
+def test_test_split_ends_with_october_2023():
+    idx = pd.date_range("2023-10-31 12:00", "2023-11-02", freq="15min", tz="UTC")
+    g = solar_geometry(PLANT, idx)
+    early = pd.date_range("2021-06-01", "2021-06-03", freq="15min", tz="UTC")
+    ge = solar_geometry(PLANT, early)
+    frame = pd.concat(
+        [
+            pd.DataFrame({"power_kw": 0.7 * ge["cs_poa"], "poa": ge["cs_poa"], "ambient_c": 15.0}),
+            pd.DataFrame({"power_kw": 0.7 * g["cs_poa"], "poa": g["cs_poa"], "ambient_c": 15.0}),
+        ]
+    )
+    p = experiment.prepare(PLANT, frame, include_test=True)
+    local = p.split.index.tz_convert(PLANT.timezone)
+    assert (p.split[local.month == 10] == "test").all()
+    assert (p.split[local.month == 11] == "").all()
