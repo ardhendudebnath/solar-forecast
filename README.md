@@ -19,8 +19,9 @@ hours the model also beats climatology (+0.19 and +0.11), the stronger baseline 
 
 **The pre-registered criterion is met**: 1-hour skill against smart persistence with a 95%
 interval above zero on both plants. One caveat: by mean absolute error rather than RMSE, the model
-is slightly worse than smart persistence at plant 9068 at 15 minutes and 1 hour. Full results, a correction made during the test run, and the
-limitations are in [`reports/results.md`](reports/results.md).
+is slightly worse than smart persistence at plant 9068 at 15 minutes and 1 hour. Full results, a
+correction made during the test run, review fixes and limitations are in
+[`reports/results.md`](reports/results.md).
 
 ## How it was evaluated
 
