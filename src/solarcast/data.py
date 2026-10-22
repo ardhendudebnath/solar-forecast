@@ -80,7 +80,7 @@ def to_utc(local: pd.Series, timezone: str) -> pd.DatetimeIndex:
 def _read_signal(path: Path, column: str, timezone: str) -> pd.Series:
     df = pd.read_csv(path, usecols=lambda c: c == column or c == "measured_on", low_memory=False)
     values = pd.to_numeric(df[column], errors="coerce")
-    utc = to_utc(df.iloc[:, 0], timezone)
+    utc = to_utc(df["measured_on"], timezone)  # by name: column order varies between files
     s = pd.Series(values.to_numpy(), index=utc).dropna()
     s = s[s.index.notna()]
     return s[~s.index.duplicated(keep="first")].sort_index()
@@ -127,6 +127,8 @@ def load_plant(plant: Plant, raw_dir: str | Path) -> pd.DataFrame:
     outages = outage_days(frame, plant)
     local_day = frame.index.tz_convert(plant.timezone).normalize()
     frame.loc[local_day.isin(outages), "power_kw"] = float("nan")
+    # Recorded here because they can no longer be detected once their power is blanked.
+    frame.attrs["outage_days"] = outages
     return frame
 
 

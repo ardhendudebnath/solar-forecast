@@ -110,3 +110,21 @@ def test_load_plant_end_to_end(raw_dir):
     assert f["poa"].max() == pytest.approx(1000.0, rel=0.01)
     # Local 12:00 in June (MDT) is 18:00 UTC: the peak lands there.
     assert f["power_kw"].idxmax().hour == 18
+
+
+def test_load_plant_records_the_outage_days_it_blanks(raw_dir):
+    import pandas as _pd
+
+    power = _pd.read_csv(raw_dir / "1" / "power.csv")
+    day2 = power["measured_on"].str.startswith("2021-06-02")
+    power.loc[day2, "p"] = 0.0  # sunny day, no power: an outage
+    power.to_csv(raw_dir / "1" / "power.csv", index=False)
+    p = plant(
+        power={"file": "power.csv", "column": "p"},
+        poa={"file": "poa.csv", "columns": ["a"]},
+        ambient={"file": "amb.csv", "column": "t", "unit": "degF"},
+    )
+    f = load_plant(p, raw_dir)
+    days = [d.strftime("%Y-%m-%d") for d in f.attrs["outage_days"]]
+    assert days == ["2021-06-02"]
+    assert outage_days(f, p).empty  # why it has to be recorded: undetectable once blanked

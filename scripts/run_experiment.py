@@ -31,8 +31,9 @@ def render(results: dict, split: str) -> str:
             "power (excluded).",
             "",
             "| Horizon | Selected | RMSE % cap: persistence / smart / climatology / selected "
-            "| Skill vs smart persistence (95% interval) | Skill vs climatology | With sensor |",
-            "|---|---|---|---|---|---|---|",
+            "| Skill vs smart persistence (95% interval) | MAE skill vs smart persistence "
+            "| Skill vs climatology | With sensor |",
+            "|---|---|---|---|---|---|---|---|",
         ]
         for h in HORIZONS:
             m, s = r["primary"][str(h)], r["sensor"][str(h)]
@@ -44,6 +45,7 @@ def render(results: dict, split: str) -> str:
                 f"| {rm['persistence'] * 100:.2f} / {rm['smart_persistence'] * 100:.2f} / "
                 f"{rm['climatology'] * 100:.2f} / **{rm['selected'] * 100:.2f}** "
                 f"| **{ci['skill']:+.3f}** ({ci['low']:+.3f} to {ci['high']:+.3f}) "
+                f"| {m['mae_skill_vs_smart_persistence']['selected']:+.3f} "
                 f"| {m['skill_vs_climatology']['selected']:+.3f} "
                 f"| {sci['skill']:+.3f} ({sci['low']:+.3f} to {sci['high']:+.3f}) |"
             )

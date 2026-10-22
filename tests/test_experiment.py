@@ -49,11 +49,14 @@ def test_prepare_splits_by_local_year_and_hides_test_by_default(frame):
         experiment.evaluate(p, "test", horizons=(1,))
 
 
-def test_warmup_covers_the_first_four_hours_of_each_partition(frame):
+def test_scoring_starts_once_the_whole_feature_window_is_inside_the_partition(frame):
     p = experiment.prepare(PLANT, frame, include_test=True)
     first_val = p.split.index[p.split == "validation"][0]
-    window = p.warmup[first_val : first_val + pd.Timedelta(hours=4)]
-    assert window.iloc[:16].all() and not window.iloc[16]
+    for h in (1, 4, 16):
+        need = experiment.features.N_LAGS - 1 + h
+        inside = p.position[p.split == "validation"].iloc[: need + 1] >= need
+        assert not inside.iloc[:need].any() and inside.iloc[need]
+        assert p.position[first_val] == 0
 
 
 def test_training_never_sees_a_later_target(frame, monkeypatch):
@@ -70,11 +73,13 @@ def test_training_never_sees_a_later_target(frame, monkeypatch):
 
     monkeypatch.setattr(experiment, "make_candidates", lambda: {"a": Spy(), "b": Spy()})
     experiment.forecasts(p, 16, "validation")
+    lags = experiment.features.N_LAGS
     for index in seen:
         assert (p.split[index] == "train").all()
-        # Issue times (t = T - h) are also in training: no feature from a later split.
-        issue = index - pd.Timedelta(minutes=15 * 16)
-        assert (p.split.reindex(issue) == "train").all()
+        # Every interval in the feature window (t - 15 ... t, with t = T - h) is in training.
+        for k in range(lags):
+            window = index - pd.Timedelta(minutes=15 * (16 + k))
+            assert (p.split.reindex(window) == "train").all()
 
 
 def test_models_beat_smart_persistence_on_forecastable_clouds(frame):
@@ -104,6 +109,7 @@ def test_selection_and_scoring_use_the_same_rows(frame):
     res = experiment.evaluate(p, "validation", horizons=(4,))[4]
     for name in ("ridge", "lightgbm"):
         assert res["validation_rmse"][name] == pytest.approx(res["rmse"][name])
+    assert res["mae_skill_vs_smart_persistence"]["smart_persistence"] == 0
     assert res["excluded_missing_forecast"]["climatology"] > 0  # counted, not hidden
     assert res["rmse"]["selected"] == min(res["rmse"]["ridge"], res["rmse"]["lightgbm"])
 
