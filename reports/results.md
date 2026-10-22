@@ -5,6 +5,10 @@ beats smart persistence, the standard hard-to-beat baseline, at every horizon on
 the pre-registered 1-hour horizon its RMSE is **14% lower at plant 2107** and **11% lower at plant
 9068**, with 95% intervals well above zero. **The pre-registered criterion is met.**
 
+One caveat matters: measured by **mean absolute error** instead of RMSE, the model is *worse* than
+smart persistence at plant 9068 at 15 minutes and 1 hour. It cuts large errors more than it
+improves typical ones there (see below).
+
 The criterion, splits, baselines and scoring rules were committed in
 [`preregistration.md`](preregistration.md) and pushed before the test year was used; the code that
 produced this result was committed before the run.
@@ -45,6 +49,14 @@ plants): **met** (2107: +0.124 to +0.160; 9068: +0.090 to +0.123).
 - **Test skill is a little lower than validation skill everywhere** (e.g. 9068 at 1 hour: +0.145
   on 2022, +0.107 on 2023). That is expected: the model was chosen on 2022, and 2023 weather
   differs. The test number is the one to quote.
+- **By mean absolute error the picture is mixed at plant 9068.** MAE skill against smart
+  persistence is positive at every horizon at 2107 (+0.040, +0.149, +0.194) but negative at 9068
+  at 15 minutes (−0.071) and 1 hour (−0.048), turning positive only at 4 hours (+0.074). The models
+  are trained on squared error, which rewards cutting large misses; at 9068 that comes at the
+  cost of slightly larger typical errors. The pre-registered criterion is RMSE-based and is met,
+  but a user who cares about average absolute error at that plant should not take this model
+  over smart persistence at short horizons. (MAE skill was promised in the pre-registration but
+  only computed after the test run; see the review fixes below.)
 - **The irradiance-sensor variant** (adding the on-site pyranometer's last 4 hours) helps
   slightly: +0.146 against +0.142 at 1 hour on 2107, +0.120 against +0.107 on 9068. It is not part
   of the criterion, because plant 9068 had no working pyranometer in its 2022 validation year.
@@ -62,12 +74,30 @@ and the test re-run. The difference is negligible:
 | Plant 2107 | +0.143 (+0.127 to +0.159) | **+0.142 (+0.124 to +0.160)** |
 | Plant 9068 | +0.105 (+0.088 to +0.121) | **+0.107 (+0.090 to +0.123)** |
 
+## Fixes from a code review after the test run
+
+A code review of the whole package after the test run found four issues. Under the
+pre-registration's rules, each fix is recorded with its effect on the result. None changes any
+score: every interval count, model choice and skill value is identical.
+
+| Issue | Fix | Effect on the result |
+|---|---|---|
+| Outage days were reported as 0: they were re-detected after their power had been blanked | The loader records the outage days it finds | Counts corrected to 1 (2107) and 2 (9068); scoring unchanged, since their power was always excluded |
+| Scoring started 4 hours into each partition, but the 4-hour horizon's feature window reaches almost 8 hours back | A target is scored only once its whole feature window lies inside its partition | None: partitions start at local midnight, so the extra excluded intervals were all at night |
+| MAE skill, promised in the pre-registration, was not computed | Computed and reported | New numbers, including the negative MAE skill at 9068 above |
+| Timestamps were read by column position | Read by name | None: every file has the timestamp first |
+
+Three other findings were checked against the data and found not to occur: no sentinel values in
+plant 9068's power column, no repeated autumn-hour timestamps in either plant's files, and
+measured power aligned with the solar geometry at zero lag (a 15-minute interval-labelling error
+would have shown up as a shift).
+
 ## Data exclusions
 
 | | Plant 2107 | Plant 9068 |
 |---|---|---|
 | Test days | 304 | 304 |
-| Outage days (excluded) | 0 | 0 |
+| Outage days (excluded) | 1 | 2 |
 | Daytime intervals without measured power (excluded) | 97 of 14,173 | 83 of 14,183 |
 | Intervals any forecast could not cover | 0 | 0 |
 

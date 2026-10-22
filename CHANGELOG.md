@@ -13,6 +13,11 @@ First release: the pre-registered experiment and its result.
   climatology at 4 hours (`reports/results.md`).
 - The first test run scored all of 2023 instead of the pre-registered January–October; the split
   was corrected and the test re-run, with a negligible difference. Both runs are reported.
+- By mean absolute error, the model is worse than smart persistence at plant 9068 at 15 minutes
+  (−0.071) and 1 hour (−0.048); it cuts large errors more than typical ones there.
+- A code review after the test run fixed four issues (outage-day count, scoring window, MAE skill
+  not computed, timestamp column by position). No score changed; each fix and its effect is
+  recorded in `reports/results.md`.
 
 ### Added
 
