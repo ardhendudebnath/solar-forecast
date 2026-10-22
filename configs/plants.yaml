@@ -1,0 +1,58 @@
+# Plants from the DOE 2023 Solar Data Prize (OEDI PVDAQ, s3://oedi-data-lake/pvdaq/2023-solar-data-prize/).
+# Raw files are downloaded to data/raw/<id>/ (see data/README.md); nothing raw is committed.
+#
+# Timestamps in the raw files are local clock time *including* daylight saving (checked against
+# sunrise/sunset in June and December), so each plant names its IANA time zone.
+
+plants:
+  "2107":
+    name: Farm Solar Array
+    location: Arbuckle, CA
+    timezone: America/Los_Angeles
+    latitude: 38.996306
+    longitude: -122.134111
+    elevation_m: 10.0
+    capacity_kw_dc: 893.0
+    tracking: false
+    tilt: 25.0
+    azimuth: 180.0
+    files:
+      power:
+        file: 2107_meter_15m_data.csv
+        column: meter_revenue_grade_ac_output_meter_149578
+      poa:
+        file: 2107_irradiance_data.csv
+        column: poa_irradiance_o_149574
+      ambient:
+        file: 2107_environment_data.csv
+        column: ambient_temperature_o_149575
+        unit: degF
+
+  "9068":
+    name: SR_CO
+    location: Kersey, CO
+    timezone: America/Denver
+    latitude: 40.3864
+    longitude: -104.5512
+    elevation_m: 1407.0
+    capacity_kw_dc: 4738.0
+    tracking: true
+    tilt: 0.0
+    azimuth: 180.0
+    files:
+      power:
+        file: 9068_ac_power_data.csv
+        column: meter_ac_power_(kw)_meter_150150
+      poa:
+        file: 9068_irradiance_data.csv
+        # Two pyranometers: pad 1 is dead in 2019-2022, pad 2 in 2022; poa is the mean of the live ones.
+        columns:
+          - pyranometer_(class_a)_pad_1_poa_irradiance_(w/m2)_o_149723
+          - pyranometer_(class_a)_pad_2_poa_irradiance_(w/m2)_o_149725
+      ambient:
+        file: 9068_environment_data.csv
+        column: weather_station_ambient_temperature_(c)_o_149727
+        unit: degC
+
+# Plant 2105 (Maui Ocean Center) is excluded: its published meter file is a byte-for-byte copy of
+# its wind-speed file (171,648 of 171,648 values identical; see data/README.md).
