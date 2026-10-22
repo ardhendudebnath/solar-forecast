@@ -86,6 +86,17 @@ def _read_signal(path: Path, column: str, timezone: str) -> pd.Series:
     return s[~s.index.duplicated(keep="first")].sort_index()
 
 
+def _read_files(raw_dir: Path, file: str | list[str], column: str, timezone: str) -> pd.Series:
+    """One signal from one file or from several (e.g. a later year published separately).
+
+    Each file is localised on its own, so a repeated autumn hour is resolved within its file;
+    where files overlap, the earlier-listed file's reading is kept.
+    """
+    files = [file] if isinstance(file, str) else file
+    s = pd.concat([_read_signal(raw_dir / f, column, timezone) for f in files])
+    return s[~s.index.duplicated(keep="first")].sort_index()
+
+
 def clean_power(s: pd.Series, capacity_kw: float) -> pd.Series:
     standby = -STANDBY_FRACTION * capacity_kw
     s = s.where((s >= standby) & (s <= 1.5 * capacity_kw))
@@ -101,12 +112,12 @@ def load_plant(plant: Plant, raw_dir: str | Path) -> pd.DataFrame:
     raw_dir = Path(raw_dir) / plant.plant_id
     out = {}
     spec = plant.files
-    power = _read_signal(raw_dir / spec["power"]["file"], spec["power"]["column"], plant.timezone)
+    power = _read_files(raw_dir, spec["power"]["file"], spec["power"]["column"], plant.timezone)
     out["power_kw"] = clean_power(power, plant.capacity_kw_dc)
     columns = spec["poa"].get("columns") or [spec["poa"]["column"]]
     sensors = [
         drop_dead_days(
-            clean_range(_read_signal(raw_dir / spec["poa"]["file"], c, plant.timezone), *POA_RANGE)
+            clean_range(_read_files(raw_dir, spec["poa"]["file"], c, plant.timezone), *POA_RANGE)
             .clip(lower=0.0)
             .resample(FREQ, label="left", closed="left")
             .mean(),
@@ -115,7 +126,7 @@ def load_plant(plant: Plant, raw_dir: str | Path) -> pd.DataFrame:
         for c in columns
     ]
     out["poa"] = pd.concat(sensors, axis=1).mean(axis=1)  # mean of the live sensors
-    amb = _read_signal(raw_dir / spec["ambient"]["file"], spec["ambient"]["column"], plant.timezone)
+    amb = _read_files(raw_dir, spec["ambient"]["file"], spec["ambient"]["column"], plant.timezone)
     if spec["ambient"].get("unit", "degC") == "degF":
         amb = (amb - 32.0) * 5.0 / 9.0
     out["ambient_c"] = clean_range(amb, *AMBIENT_RANGE_C)

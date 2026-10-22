@@ -53,8 +53,18 @@ class Prepared:
     poa_index: pd.Series  # measured POA / clear-sky POA (the irradiance-sensor variant only)
 
 
-def prepare(plant: Plant, frame: pd.DataFrame, include_test: bool = False) -> Prepared:
+def prepare(
+    plant: Plant,
+    frame: pd.DataFrame,
+    include_test: bool = False,
+    splits: dict = SPLITS,
+    test_last_month: int = TEST_LAST_MONTH,
+) -> Prepared:
     """Per-unit power, clear-sky reference fitted on training data, split labels.
+
+    ``splits`` maps train / validation / test to (first, last) local calendar years; the test
+    period ends with ``test_last_month``. The defaults are v0.1's; v0.2 passes its own.
+    Without ``include_test``, nothing after the validation year is kept.
 
     Outage days are taken from ``frame.attrs["outage_days"]`` (set by ``load_plant``, which has
     already blanked their power); frames built elsewhere have them detected here.
@@ -66,11 +76,12 @@ def prepare(plant: Plant, frame: pd.DataFrame, include_test: bool = False) -> Pr
     year = pd.Series(local.year, index=frame.index)
     month = pd.Series(local.month, index=frame.index)
     if not include_test:
-        frame, year, month = frame[year <= 2022], year[year <= 2022], month[year <= 2022]
+        keep = year <= splits["validation"][1]
+        frame, year, month = frame[keep], year[keep], month[keep]
     split = pd.Series("", index=frame.index)
-    for name, (lo, hi) in SPLITS.items():
+    for name, (lo, hi) in splits.items():
         split[(year >= (lo or 0)) & (year <= hi)] = name
-    split[(split == "test") & (month > TEST_LAST_MONTH)] = ""  # outside the test period
+    split[(split == "test") & (month > test_last_month)] = ""  # outside the test period
     power = frame["power_kw"] / plant.capacity_kw_dc
     geometry = solar_geometry(plant, frame.index)
     train = split == "train"

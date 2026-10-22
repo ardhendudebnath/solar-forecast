@@ -128,3 +128,19 @@ def test_load_plant_records_the_outage_days_it_blanks(raw_dir):
     days = [d.strftime("%Y-%m-%d") for d in f.attrs["outage_days"]]
     assert days == ["2021-06-02"]
     assert outage_days(f, p).empty  # why it has to be recorded: undetectable once blanked
+
+
+def test_a_signal_can_span_several_files(raw_dir):
+    whole = pd.read_csv(raw_dir / "1" / "power.csv")
+    first = whole["measured_on"] < "2021-06-02"
+    whole[first].to_csv(raw_dir / "1" / "power_a.csv", index=False)
+    whole[~first].to_csv(raw_dir / "1" / "power_b.csv", index=False)
+    spec = dict(
+        poa={"file": "poa.csv", "columns": ["a"]},
+        ambient={"file": "amb.csv", "column": "t", "unit": "degF"},
+    )
+    one = load_plant(plant(power={"file": "power.csv", "column": "p"}, **spec), raw_dir)
+    two = load_plant(
+        plant(power={"file": ["power_b.csv", "power_a.csv"], "column": "p"}, **spec), raw_dir
+    )
+    pd.testing.assert_frame_equal(one, two)  # listed in any order, read as one signal

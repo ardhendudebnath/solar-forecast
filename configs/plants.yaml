@@ -1,5 +1,7 @@
 # Plants from the DOE 2023 Solar Data Prize (OEDI PVDAQ, s3://oedi-data-lake/pvdaq/2023-solar-data-prize/).
 # Raw files are downloaded to data/raw/<id>/ (see data/README.md); nothing raw is committed.
+# A signal's `file` may list several files (later years were published separately); they are
+# read in order and concatenated.
 #
 # Timestamps in the raw files are local clock time *including* daylight saving (checked against
 # sunrise/sunset in June and December), so each plant names its IANA time zone.
@@ -18,13 +20,13 @@ plants:
     azimuth: 180.0
     files:
       power:
-        file: 2107_meter_15m_data.csv
+        file: [2107_meter_15m_data.csv, 2107_meter_15m_data_2024.csv]
         column: meter_revenue_grade_ac_output_meter_149578
       poa:
-        file: 2107_irradiance_data.csv
+        file: [2107_irradiance_data.csv, 2107_irradiance_data_2024.csv]
         column: poa_irradiance_o_149574
       ambient:
-        file: 2107_environment_data.csv
+        file: [2107_environment_data.csv, 2107_environment_data_2024.csv]
         column: ambient_temperature_o_149575
         unit: degF
 
@@ -41,16 +43,17 @@ plants:
     azimuth: 180.0
     files:
       power:
-        file: 9068_ac_power_data.csv
+        # The meter column moved to a separate file in the 2024 release (same sensor id).
+        file: [9068_ac_power_data.csv, 9068_meter_data_20240101_20250430.csv]
         column: meter_ac_power_(kw)_meter_150150
       poa:
-        file: 9068_irradiance_data.csv
+        file: [9068_irradiance_data.csv, 9068_irradiance_data_20240101_20250430.csv]
         # Two pyranometers: pad 1 is dead in 2019-2022, pad 2 in 2022; poa is the mean of the live ones.
         columns:
           - pyranometer_(class_a)_pad_1_poa_irradiance_(w/m2)_o_149723
           - pyranometer_(class_a)_pad_2_poa_irradiance_(w/m2)_o_149725
       ambient:
-        file: 9068_environment_data.csv
+        file: [9068_environment_data.csv, 9068_environment_data_20240101_20250430.csv]
         column: weather_station_ambient_temperature_(c)_o_149727
         unit: degC
 
