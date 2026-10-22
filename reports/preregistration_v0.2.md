@@ -117,7 +117,10 @@ irradiance-sensor variant (plant 9068, 4 hours, LightGBM), which differed in the
 (RMSE 0.217441 against 0.217442). The data was identical; the cause is that LightGBM chooses
 between col-wise and row-wise histogram construction by timing both, so under different machine
 load it can choose differently and round differently (forcing each reproduces the two values
-exactly). All LightGBM models, v0.1 and v0.2, now use `force_col_wise=True`, the choice that
-reproduces the published v0.1 results. This changes no model setting, only removes a source of
-run-to-run variation. Found while checking the code on validation data; no 2024 forecast had
+exactly). All LightGBM models, v0.1 and v0.2, now use `force_col_wise=True`. With it, the
+published v0.1 test results reproduce exactly, and so does every published validation number
+except the same model's seven values, by at most 0.000016: in the published validation run
+LightGBM had happened to choose row-wise for that one model. Every primary v0.1 number
+reproduces exactly. This changes no model setting, only removes a source of run-to-run
+variation. Found while checking the code on validation data; no 2024 forecast had
 been made.

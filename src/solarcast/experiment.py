@@ -33,7 +33,7 @@ LGBM_PARAMS = dict(
     min_child_samples=100,
     verbose=-1,
     # LightGBM otherwise picks col- or row-wise histograms by timing both, so the choice (and the
-    # last digits of the result) depends on machine load. Col-wise reproduces the v0.1 results.
+    # last digits of the result) depends on machine load. Col-wise reproduces the v0.1 test run.
     force_col_wise=True,
 )
 
