@@ -1,4 +1,4 @@
-data/raw/
+data/raw
 artifacts/
 __pycache__/
 *.egg-info/

@@ -17,7 +17,7 @@ from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from solarcast import baselines, features
+from solarcast import baselines, bootstrap, features
 from solarcast.clearsky import SCORED_ZENITH, clearsky_power, fit_scale, solar_geometry
 from solarcast.data import Plant, outage_days
 
@@ -48,6 +48,7 @@ class Prepared:
     split: pd.Series  # "train" / "validation" / "test" / "" per interval
     warmup: pd.Series  # True in the first WARMUP intervals of each partition
     outages: pd.DatetimeIndex
+    poa_index: pd.Series  # measured POA / clear-sky POA (the irradiance-sensor variant only)
 
 
 def prepare(plant: Plant, frame: pd.DataFrame, include_test: bool = False) -> Prepared:
@@ -67,7 +68,18 @@ def prepare(plant: Plant, frame: pd.DataFrame, include_test: bool = False) -> Pr
     start = split.ne(split.shift())
     position = split.groupby(start.cumsum()).cumcount()
     warmup = position < WARMUP
-    return Prepared(plant, power, cs, geometry, sun_up, split, warmup, outage_days(frame, plant))
+    poa_index = (frame["poa"] / geometry["cs_poa"]).where(sun_up & (geometry["cs_poa"] > 0))
+    return Prepared(
+        plant,
+        power,
+        cs,
+        geometry,
+        sun_up,
+        split,
+        warmup,
+        outage_days(frame, plant),
+        poa_index.clip(*features.CSI_CLIP),
+    )
 
 
 def scored_mask(p: Prepared, split: str) -> pd.Series:
@@ -87,16 +99,22 @@ def rmse(forecast: pd.Series, actual: pd.Series) -> float:
     return float(np.sqrt(((forecast - actual) ** 2).mean()))
 
 
-def forecasts(p: Prepared, h: int, eval_split: str) -> tuple[pd.DataFrame, dict]:
+def forecasts(
+    p: Prepared, h: int, eval_split: str, sensor: bool = False
+) -> tuple[pd.DataFrame, dict]:
     """All forecasts for target times in ``eval_split`` at horizon h, plus the selection record.
 
     Candidates are fitted on training targets; the one with the lower validation RMSE is
-    selected regardless of ``eval_split``.
+    selected regardless of ``eval_split``. ``sensor=True`` is the irradiance-sensor variant: the
+    on-site POA sensor's clear-sky index over the last 4 hours is added to the features.
     """
     train = p.split == "train"
     csi_med = baselines.hourly_csi_median(p.power[train], p.cs_power[train], p.sun_up[train])
     clim = baselines.climatology_table(p.power[train])
     x, y = features.build(p.power, p.cs_power, p.geometry, p.sun_up, h)
+    if sensor:
+        for k in range(features.N_LAGS):
+            x[f"poa_lag{k}"] = p.poa_index.shift(k + h)
     fit_rows = scored_mask(p, "train") & y.notna() & x["cs_now"].notna()
     out = {
         "persistence": baselines.persistence(p.power, h),
@@ -118,18 +136,31 @@ def forecasts(p: Prepared, h: int, eval_split: str) -> tuple[pd.DataFrame, dict]
     return table[p.split == eval_split], record
 
 
-def evaluate(p: Prepared, split: str = "validation", horizons=HORIZONS) -> dict:
-    """RMSE (per-unit) of every forecast on the scored intervals of ``split``, per horizon."""
+def local_day(p: Prepared, index: pd.DatetimeIndex) -> pd.Series:
+    return pd.Series(index.tz_convert(p.plant.timezone).normalize(), index=index)
+
+
+def evaluate(
+    p: Prepared, split: str = "validation", horizons=HORIZONS, sensor: bool = False
+) -> dict:
+    """Per horizon: RMSE (per-unit) of every forecast on the scored intervals of ``split``,
+    skill against smart persistence, and a day-block bootstrap interval for the selected model."""
     if split == "test" and not (p.split == "test").any():
         raise ValueError("Test data was not loaded: prepare(..., include_test=True)")
     results = {}
     for h in horizons:
-        table, record = forecasts(p, h, split)
+        table, record = forecasts(p, h, split, sensor=sensor)
         scored = scored_mask(p, split).reindex(table.index)
         ok = scored & table.notna().all(axis=1)
         actual = p.power.reindex(table.index)[ok]
         scores = {k: rmse(table.loc[ok, k], actual) for k in table.columns}
         ref = scores["smart_persistence"]
+        interval = bootstrap.skill_interval(
+            table.loc[ok, "selected"],
+            table.loc[ok, "smart_persistence"],
+            actual,
+            local_day(p, actual.index),
+        )
         results[h] = {
             "n": int(ok.sum()),
             "excluded_missing_forecast": {
@@ -137,6 +168,22 @@ def evaluate(p: Prepared, split: str = "validation", horizons=HORIZONS) -> dict:
             },
             "rmse": scores,
             "skill_vs_smart_persistence": {k: 1 - v / ref for k, v in scores.items()},
+            "skill_vs_persistence": {k: 1 - v / scores["persistence"] for k, v in scores.items()},
+            "skill_vs_climatology": {k: 1 - v / scores["climatology"] for k, v in scores.items()},
+            "selected_skill_interval": interval,
             **record,
         }
     return results
+
+
+def data_counts(p: Prepared, split: str) -> dict:
+    """Outage days and missing actual power in ``split`` (both excluded from scoring)."""
+    in_split = p.split == split
+    days = local_day(p, p.split.index)[in_split].unique()
+    daytime = in_split & p.sun_up & ~p.warmup
+    return {
+        "outage_days": int(pd.DatetimeIndex(days).isin(p.outages).sum()),
+        "days": int(len(days)),
+        "daytime_intervals": int(daytime.sum()),
+        "daytime_missing_power": int((daytime & p.power.isna()).sum()),
+    }
