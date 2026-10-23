@@ -54,6 +54,12 @@ pre-registration for structure only; no forecast was made and no score computed.
   up to 2.5 days. Intervals without measured power are excluded from scoring and counted.
 - Between the old files (ending November 2023) and the 2024 files there is no data.
 
+**Found after the v0.2 test (a value problem the structural check could not see):** plant
+9068's 2024 meter series disagrees with the plant's own inverters. From January to July 2024 its
+daily peak is 0.52 times the inverter total (0.95–1.01 in 2017–2023); from August to October it is
+near zero on most days, with spikes up to 16,595 kW on 23 days. The inverters report normal output
+throughout. Details and the effect on the result are in `reports/results_v0.2.md`.
+
 ## Download
 
 ```bash
@@ -69,7 +75,7 @@ For v0.2 (2024 test year), also:
 ```bash
 for f in 2107_meter_15m_data_2024 2107_irradiance_data_2024 2107_environment_data_2024; do
   curl -o data/raw/2107/$f.csv --create-dirs $B/2107_OEDI/data/$f.csv; done
-for f in 9068_meter_data 9068_irradiance_data 9068_environment_data; do
+for f in 9068_meter_data 9068_irradiance_data 9068_environment_data 9068_ac_power_data; do
   curl -o data/raw/9068/${f}_20240101_20250430.csv --create-dirs \
     $B/9068_OEDI/data/${f}_20240101_20250430.csv; done
 ```

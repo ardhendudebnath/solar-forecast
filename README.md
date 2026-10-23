@@ -23,6 +23,26 @@ is slightly worse than smart persistence at plant 9068 at 15 minutes and 1 hour.
 correction made during the test run, review fixes and limitations are in
 [`reports/results.md`](reports/results.md).
 
+## v0.2: probabilistic forecasts, tested on 2024
+
+A second pre-registered experiment ([`reports/preregistration_v0.2.md`](reports/preregistration_v0.2.md))
+added quantile forecasts and tested them, plus a replication of the result above, on 2024 data
+published after v0.1. **Only the calibration criterion was met**:
+
+| 1 hour, January–October 2024 | Plant 2107 | Plant 9068 | Verdict |
+|---|---|---|---|
+| CRPS skill vs the strongest baseline (SP-Err) | +0.246 | −0.198 | not met |
+| 90% interval coverage (target 0.85–0.95) | 0.897 | 0.889 | **met** |
+| Point model replication, RMSE skill vs smart persistence | +0.125 | −0.108 | not met |
+| Median forecast, MAE skill vs smart persistence | +0.203 | −0.279 | not met |
+
+Plant 2107 passes everything. At plant 9068, the published 2024 meter series turned out to read
+about half of the plant's own inverter total for seven months and zero or impossible spikes after
+that. A post-hoc re-run on the inverter total passes at 9068, but it was chosen after the result,
+so the verdicts stand. The pre-test check of the 2024 files was structural only; comparing the
+meter with the inverters would have caught this. Full write-up:
+[`reports/results_v0.2.md`](reports/results_v0.2.md).
+
 ## How it was evaluated
 
 1. **Data checks first.** The raw DOE data needed real work: local timestamps with daylight
@@ -56,6 +76,7 @@ pytest -q
 # download the raw files listed in data/README.md into data/raw/<plant>/, then
 python scripts/run_experiment.py --split validation
 python scripts/run_experiment.py --split test
+python scripts/run_v02.py --split test   # v0.2 (needs the 2024 files)
 ```
 
 ## Repository layout
@@ -63,7 +84,8 @@ python scripts/run_experiment.py --split test
 ```
 configs/plants.yaml        plant metadata and which raw columns to use
 src/solarcast/             data loading, clear-sky model, baselines, features, experiment
-scripts/run_experiment.py  one command: result table and verdict
+scripts/run_experiment.py  v0.1: point forecasts, result table and verdict
+scripts/run_v02.py         v0.2: probabilistic forecasts, a verdict per criterion
 reports/                   pre-registration and results
 data/README.md             data source, download and what the checks found
 tests/                     unit tests, including leakage and selection checks

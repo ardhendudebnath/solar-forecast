@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.2.0 (2026-10-23)
+
+A second pre-registered experiment: probabilistic forecasts and a replication, tested on 2024,
+a year published after v0.1.
+
+### Results
+
+- **Only the calibration criterion is met.** At 1 hour the quantile model's 90% intervals cover
+  0.897 (plant 2107) and 0.889 (plant 9068) of actual values (P2). At plant 2107 it beats PeEn,
+  CH-PeEn and SP-Err on CRPS (+0.390, +0.528, +0.246), the v0.1 point result replicates (+0.125
+  RMSE skill vs smart persistence) and the median forecast beats smart persistence by MAE
+  (+0.203). At plant 9068 it loses to SP-Err (−0.198), the point model loses to smart persistence
+  (−0.108) and the median loses by MAE (−0.279), so P1, S1 and S2 are not met
+  (`reports/results_v0.2.md`).
+- **Cause, found after the test:** plant 9068's published 2024 meter series reads about half of
+  the plant's inverter total from January to July and zero or impossible spikes from August,
+  while the inverters run normally. A post-hoc re-run on the inverter total passes all four
+  criteria at 9068; it was chosen after the result, so the verdicts stand.
+- **Protocol lesson:** the pre-test check of the 2024 files was structural only. Future
+  pre-registrations here check new data against an independent signal and pre-register a fallback.
+- **Pre-test amendment:** LightGBM's histogram method is fixed (`force_col_wise=True`), because
+  its automatic choice depends on machine load and changed one v0.1 number in the sixth decimal.
+
+### Added
+
+- `solarcast.probabilistic`: LightGBM quantile regression (19 levels) and the PeEn, CH-PeEn and
+  SP-Err baselines; CRPS, coverage, interval width and reliability, with day-block intervals.
+- `scripts/run_v02.py` (the pre-registered run) and `scripts/explore_9068_inverters.py`
+  (post-hoc, labelled as such).
+- The loader reads one signal from several files; the 2024 files are configured.
+
 ## 0.1.0 (2026-10-22)
 
 First release: the pre-registered experiment and its result.
